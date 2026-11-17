@@ -89,7 +89,8 @@ bool Ok(const Return<fp::RequestStatus>& result) {return result.isOk()&&static_c
 int main(int argc,char** argv) {
   signal(SIGTERM,Stop);signal(SIGINT,Stop);signal(SIGPIPE,SIG_IGN);
   android::hardware::configureRpcThreadpool(2,false);
-  auto service=fp3::IBiometricsFingerprint::tryGetService();
+  android::sp<fp3::IBiometricsFingerprint> service3 = fp3::IBiometricsFingerprint::tryGetService();
+  android::sp<fp::IBiometricsFingerprint> service = service3 ? android::sp<fp::IBiometricsFingerprint>(service3) : fp::IBiometricsFingerprint::tryGetService();
   if(!service){Send("unavailable","Fingerprint service is not available.");return 1;}
   const bool optical=android::base::GetProperty("persist.vendor.fingerprint.sensor_type","")=="optical";
   const int x=android::base::GetIntProperty<int>("vendor.aera.fingerprint.sensor_x",0);
@@ -109,7 +110,7 @@ int main(int argc,char** argv) {
   android::sp<Callback> callback=new Callback;
   auto notified=service->setNotify(callback);
   if(!notified.isOk()||!static_cast<uint64_t>(notified)){Send("error","Could not create a fingerprint authentication session.");return 1;}
-  const auto cleanup=[&]{stopping=1;service->onFingerUp();service->cancel();};
+  const auto cleanup=[&]{stopping=1;{ if (service3) service3->onFingerUp(); }service->cancel();};
   if(!Ok(service->setActiveGroup(0,"/data/vendor_de/0/fpdata"))||!Ok(service->enumerate())) {
     Send("error","Could not inspect existing fingerprint enrollment.");cleanup();return 1;
   }
@@ -135,9 +136,9 @@ int main(int argc,char** argv) {
       const auto command=pending.substr(0,newline);pending.erase(0,newline+1);
       int tx=0,ty=0;
       if(command=="cancel"){stopping=1;break;}
-      if(command=="up")service->onFingerUp();
+      if(command=="up"){ if (service3) service3->onFingerUp(); }
       else if(sscanf(command.c_str(),"down %d %d",&tx,&ty)==2&&tx>=0&&ty>=0&&tx<width&&ty<height)
-        service->onFingerDown(tx,ty,12.0f,16.0f);
+        { if (service3) service3->onFingerDown(tx,ty,12.0f,16.0f); }
     }
   }
   cleanup();return 0;
