@@ -2966,8 +2966,8 @@ void TWFunc::OrangeFox_Startup(void)
   
   // start mtp manually, if enabled
   #ifdef TW_HAS_MTP
- // if (DataManager::GetIntValue("tw_mtp_enabled") == 1 && !PartitionManager.is_MTP_Enabled())
- //    PartitionManager.Enable_MTP();
+  if (DataManager::GetIntValue("tw_mtp_enabled") == 1 && !PartitionManager.is_MTP_Enabled())
+     PartitionManager.Enable_MTP();
   #endif
 }
 
